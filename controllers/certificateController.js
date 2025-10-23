@@ -1,132 +1,199 @@
+const Result = require("../models/Result");
 const PDFDocument = require("pdfkit");
+const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
 
-exports.generateCertificate = (req, res) => {
-  const { name, quizTitle, score } = req.body;
+exports.generateCertificateByResultId = async (req, res) => {
+  try {
+    const { resultId } = req.body;
+    const userId = req.user.id;
 
-  // Create PDF document with A4 size and margins
-  const doc = new PDFDocument({
-    size: "A4",
-    margins: { top: 50, bottom: 50, left: 50, right: 50 },
-  });
+    if (!mongoose.Types.ObjectId.isValid(resultId)) {
+      return res.status(400).json({ message: "Invalid result ID format." });
+    }
 
-  const fileName = `Certificate_${name.replace(/ /g, "_")}.pdf`;
+    const result = await Result.findOne({ _id: resultId, userId });
+    if (!result) return res.status(404).json({ message: "Result not found." });
+    if (!result.pass)
+      return res.status(403).json({ message: "You must pass to download the certificate." });
 
-  // Set response headers for file download
-  res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
-  res.setHeader("Content-Type", "application/pdf");
-
-  doc.pipe(res);
-
-  // Draw a decorative frame
-  doc
-    .rect(30, 30, doc.page.width - 60, doc.page.height - 60)
-    .lineWidth(4)
-    .strokeColor("#003366")
-    .stroke();
-
-  // Company Name
-  doc
-    .fontSize(16)
-    .fillColor("#444444")
-    .font("Helvetica-Bold")
-    .text("TechWorld Learning Pvt. Ltd.", { align: "center" });
-
-  // Fake CIN Number
-  doc
-    .moveDown(0.2)
-    .fontSize(10)
-    .fillColor("#666666")
-    .font("Helvetica")
-    .text("CIN: U12345MH2023PTC456789", { align: "center" });
-
-  doc.moveDown(2);
-
-  // Certificate Title
-  doc
-    .fontSize(28)
-    .fillColor("#003366")
-    .font("Helvetica-Bold")
-    .text("Certificate of Completion", { align: "center" });
-
-  doc.moveDown(2);
-
-  // Introductory Statement
-  doc
-    .fontSize(14)
-    .fillColor("#000000")
-    .font("Helvetica")
-    .text("This is to certify that", { align: "center" });
-
-  doc.moveDown(1);
-
-  // Recipient's Name - underlined and styled
-  doc
-    .fontSize(22)
-    .fillColor("#0066CC")
-    .font("Helvetica-Bold")
-    .text(name, {
-      align: "center",
-      underline: true,
+    // ✅ Create Landscape A4 PDF
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "landscape",
+      margin: 40,
     });
 
-  doc.moveDown(1);
-
-  // Achievement Text
-  doc
-    .fontSize(14)
-    .fillColor("#000000")
-    .font("Helvetica")
-    .text("has successfully completed the quiz titled", { align: "center" });
-
-  doc.moveDown(0.5);
-
-  // Quiz Title in Italics
-  doc
-    .fontSize(14)
-    .fillColor("#000000")
-    .font("Helvetica-Oblique")
-    .text(`"${quizTitle}"`, { align: "center" });
-
-  doc.moveDown(1);
-
-  // Score Details
-  doc
-    .fontSize(12)
-    .fillColor("#444444")
-    .font("Helvetica")
-    .text(`With a score of: ${score}`, { align: "center" });
-
-  doc.moveDown(3);
-
-  // Certificate ID at bottom right
-  doc
-    .fontSize(10)
-    .fillColor("#888888")
-    .font("Helvetica")
-    .text(`Certificate ID: CERT-${Math.floor(100000 + Math.random() * 900000)}`, {
-      align: "right",
+    const buffers = [];
+    doc.on("data", buffers.push.bind(buffers));
+    doc.on("end", () => {
+      const pdfData = Buffer.concat(buffers);
+      res.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=certificate_${resultId}.pdf`,
+      });
+      res.end(pdfData);
     });
 
-  doc.moveDown(5);
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
 
-  // Signature line and authorized signatory
-  doc
-    .fontSize(12)
-    .fillColor("#000000")
-    .text("_________________________", 100, 650);
+    // 🎨 Background + Gold Border (Frame)
+    doc.rect(0, 0, pageWidth, pageHeight).fill("#fffdf7");
+    doc.lineWidth(12)
+      .strokeColor("#ffc400ff")
+      .rect(30, 30, pageWidth - 60, pageHeight - 60)
+      .stroke();
 
-  doc
-    .fontSize(12)
-    .fillColor("#000000")
-    .text("Authorized Signatory", 120, 670);
+    // 🏢 Center Logo + Company Name
+    const logoPath = path.join(__dirname, "./assets/talentquiz_logo.png");
+    const companyName = "TalentQuiz Labs";
+    const logoWidth = 70;
+    const fontSize = 42;
 
-  // Issue Date at bottom right
-  const issueDate = new Date().toLocaleDateString();
-  doc
-    .fontSize(10)
-    .fillColor("#555555")
-    .text(`Date of Issue: ${issueDate}`, 400, 670);
+    const textWidth = doc.widthOfString(companyName, { font: "Helvetica-Bold", size: fontSize });
+    const totalWidth = logoWidth + 20 + textWidth;
+    const startX = (pageWidth - 250 - totalWidth) / 2;
+    const yLogo = 70;
 
-  // Finalize PDF file
-  doc.end();
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, startX, yLogo, { width: logoWidth, height: 70 });
+    }
+
+    doc.font("Helvetica-Bold")
+      .fontSize(fontSize)
+      .fillColor("#B8860B")
+      .text(companyName, startX + logoWidth + 20, yLogo + 20);
+
+    // 🏆 Title
+    doc.font("Times-BoldItalic")
+      .fontSize(38)
+      .fillColor("#000")
+      .text("CERTIFICATE OF ACHIEVEMENT", 0, 165, { align: "center" });
+
+    // 🎉 Subtitle
+    doc.font("Helvetica")
+      .fontSize(18)
+      .fillColor("#333")
+      .text("This certificate is proudly presented to", 0, 220, { align: "center" });
+
+    // 👤 Student Name
+    doc.font("Times-Bold")
+      .fontSize(32)
+      .fillColor("#000")
+      .text(result.userName || "Student Name", 0, 260, { align: "center" });
+
+    // Line Separator
+    doc.strokeColor("#B8860B")
+      .lineWidth(2)
+      .moveTo(120, 292)
+      .lineTo(pageWidth - 120, 292)
+      .stroke();
+
+    // 📘 Quiz Info
+    doc.font("Helvetica")
+      .fontSize(16)
+      .fillColor("#444")
+      .text("For successfully completing the quiz:", 0, 315, { align: "center" });
+
+    doc.font("Times-BoldItalic")
+      .fontSize(20)
+      .fillColor("#1D4ED8")
+      .text(result.quizTitle || "Full Stack Web Development", 0, 340, { align: "center" });
+
+    // 🎓 Program Designed By Section
+    const alumniY = 370;
+    const alumniHeight = 70;
+
+    doc.save();
+    doc.rect(80, alumniY, pageWidth - 160, alumniHeight)
+      .fillAndStroke("#FFF8DC", "#D4AF37");
+    doc.restore();
+
+    doc.font("Helvetica-Bold")
+      .fontSize(13)
+      .fillColor("#333")
+      .text("Program designed by top alumni from", 0, alumniY + 10, { align: "center" });
+
+    const logos = [
+      { name: "Google", file: "google_logo.png" },
+      { name: "Microsoft", file: "microsoft_logo.png" },
+      { name: "IIT Bombay", file: "iitb_logo.png" },
+      { name: "Infosys", file: "infosys_logo.png" },
+    ];
+
+    const logoSmallWidth = 35;
+    const spacing = 70;
+    const totalLogoWidth = logos.length * logoSmallWidth + (logos.length - 1) * spacing;
+    const startXlogos = (pageWidth - totalLogoWidth) / 2;
+    const yPos = alumniY + 30;
+
+    logos.forEach((logo, i) => {
+      const logoFile = path.join(__dirname, "./assets", logo.file);
+      if (fs.existsSync(logoFile)) {
+        const x = startXlogos + i * (logoSmallWidth + spacing);
+        doc.image(logoFile, x, yPos, { width: logoSmallWidth, height: 25 });
+      }
+    });
+
+    // 💻 Technologies Covered Section (below alumni)
+    const technologies = result.technologies?.length
+      ? result.technologies
+      : ["HTML", "CSS", "JavaScript", "React", "Node.js"];
+
+    const techY = alumniY + alumniHeight + 15;
+
+    doc.font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#000")
+      .text("Technologies Covered:", 0, techY, { align: "center" });
+
+    const techList = technologies.join("   •   ");
+    doc.font("Helvetica")
+      .fontSize(12)
+      .fillColor("#444")
+      .text(techList, 60, techY + 20, { align: "center", width: pageWidth - 120 });
+
+    // 📅 Issue Date (Left) + Signature (Right)
+    const issueDate = result.completedAt
+      ? new Date(result.completedAt).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "October 23, 2025";
+
+    const bottomY = pageHeight - 60;
+    const ceoName = "K. Vinay";
+    const ceoTitle = "CEO, TalentQuiz Labs";
+
+    // Left: Issue Date
+    doc.font("Helvetica-Bold")
+      .fontSize(12)
+      .fillColor("#000")
+      .text(`Issued on: ${issueDate}`, 80, bottomY, { align: "left" });
+
+    // Right: Signature and Title
+    const ceoTextWidth = Math.max(
+      doc.widthOfString(ceoName),
+      doc.widthOfString(ceoTitle)
+    );
+    const ceoX = pageWidth - ceoTextWidth - 80;
+
+    doc.font("Times-BoldItalic")
+      .fontSize(13)
+      .fillColor("#000")
+      .text(ceoName, ceoX, bottomY - 15);
+
+    doc.font("Helvetica")
+      .fontSize(11)
+      .fillColor("#333")
+      .text(ceoTitle, ceoX, bottomY);
+
+    doc.end();
+  } catch (err) {
+    console.error("Error generating certificate:", err);
+    res.status(500).json({ message: "Server error generating certificate." });
+  }
 };

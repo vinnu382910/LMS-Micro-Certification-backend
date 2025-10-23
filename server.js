@@ -6,6 +6,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
+const resultsRoutes = require("./routes/resultRoutes");
 
 const app = express();
 
@@ -14,9 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/quiz", quizRoutes);
-app.use("/api/certificate", certificateRoutes);
+app.use("/auth", authRoutes);
+app.use("/quiz", quizRoutes);
+app.use("/certificate", certificateRoutes);
+app.use("/user", resultsRoutes);
 
 // Connect to MongoDB and start server
 mongoose.connect(process.env.MONGO_URI, {

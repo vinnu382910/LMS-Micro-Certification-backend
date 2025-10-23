@@ -1,8 +1,9 @@
+// routes/certificate.js
 const express = require("express");
 const router = express.Router();
-const { generateCertificate } = require("../controllers/certificateController");
 const { verifyToken } = require("../middleware/authMiddleware");
+const { generateCertificateByResultId } = require("../controllers/certificateController");
 
-router.post("/", verifyToken, generateCertificate);
+router.post("/download", verifyToken, generateCertificateByResultId);
 
 module.exports = router;
