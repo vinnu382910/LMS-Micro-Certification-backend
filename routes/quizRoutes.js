@@ -10,7 +10,7 @@ const {
 const { verifyToken } = require("../middleware/authMiddleware");
 
 // ✅ Get all quizzes list (for dashboard or quiz list page)
-router.get("/list", verifyToken, getAllQuizzes);
+router.get("/list",  getAllQuizzes);
 
 // ✅ Get basic quiz info (before starting exam)
 router.get("/info/:quizId", verifyToken, getQuizInfo);
