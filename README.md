@@ -9,7 +9,14 @@ A complete **Node.js + Express + MongoDB** backend for the **Micro-Certification
 * Track results and download certificates
 
 ---
+## 🔗 Useful Links
 
+- ✅ **Frontend GitHub Repository:** [LMS Micro Certification Frontend](https://github.com/vinnu382910/LMS-Micro-Certification-frontend)
+- ✅ **Deployed Frontend:** [https://lms-micro-certification-frontend.vercel.app/](https://lms-micro-certification-frontend.vercel.app/)
+- ✅ **Backend GitHub Repository:** [LMS Micro Certification Backend](https://github.com/vinnu382910/LMS-Micro-Certification-backend)
+- ✅ **Deployed Backend:** [https://lms-micro-certification-backend.onrender.com](https://lms-micro-certification-backend.onrender.com)
+
+---
 ## 🚀 Tech Stack
 
 * **Node.js** – Server environment
