@@ -1,284 +1,351 @@
+# 🧠 Micro-Certifications Backend
 
-# 📚 LMS Micro Certification Backend
-
-This is the **LMS Micro Certification Backend**, a RESTful API built with Node.js, Express, and MongoDB to support an online learning platform where users can register, log in, take quizzes, and download certificates. The backend handles authentication, quiz data management, and secure result submission.
-
----
-
-## 🔗 Useful Links
-
-- ✅ **Frontend GitHub Repository:** [LMS Micro Certification Frontend](https://github.com/vinnu382910/LMS-Micro-Certification-frontend)
-- ✅ **Deployed Frontend:** [https://lms-micro-certification-frontend.vercel.app/](https://lms-micro-certification-frontend.vercel.app/)
-- ✅ **Deployed Backend:** [https://lms-micro-certification-backend.onrender.com](https://lms-micro-certification-backend.onrender.com)
+A **Node.js + Express + MongoDB** backend that powers the **Micro-Certifications App** — a platform for users to take online quizzes, track results, and download digital certificates for passed tests.
 
 ---
 
 ## 🚀 Features
 
-- ✅ User registration and login with JWT authentication
-- ✅ Secure routes for submitting quiz answers
-- ✅ Fetch quiz questions without authentication
-- ✅ Generate PDF certificates upon quiz completion
-- ✅ Role-based access management
-- ✅ Well-structured code with MVC architecture and middleware
+✅ User authentication (Register/Login) with JWT
+✅ Secure token-based quiz participation
+✅ Dynamic quiz listing and filtering (by level, tech, search)
+✅ Exam session management with auto-expiry
+✅ Score calculation and detailed result saving
+✅ Certificate generation (PDF format) for passed quizzes
+✅ Result filtering and pagination
 
 ---
 
-## 📦 Technologies Used
+## 🧩 Tech Stack
 
-- Node.js & Express
-- MongoDB with Mongoose
-- JWT for authentication
-- PDFKit for certificate generation
-- Environment variables using dotenv
-- CORS handling and error management
+| Layer                  | Technology                  |
+| ---------------------- | --------------------------- |
+| Backend Framework      | **Node.js**, **Express.js** |
+| Database               | **MongoDB + Mongoose**      |
+| Authentication         | **JWT (JSON Web Token)**    |
+| Password Security      | **bcrypt.js**               |
+| Certificate Generation | **PDFKit**                  |
+| Environment Management | **dotenv**                  |
 
 ---
 
-## 📁 Folder Structure
+## 🏗️ Project Structure
 
 ```
-
-backend/
-├── controllers/
-│   ├── authController.js
-│   ├── quizController.js
-│   └── certificateController.js
-├── middlewares/
-│   └── authMiddleware.js
+micro-certifications-backend/
+│
 ├── models/
 │   ├── User.js
 │   ├── Question.js
-│   └── Result.js
+│   ├── Result.js
+│   └── ExamSession.js
+│
+├── controllers/
+│   ├── authController.js
+│   ├── quizController.js
+│   ├── resultController.js
+│   └── certificateController.js
+│
 ├── routes/
 │   ├── authRoutes.js
 │   ├── quizRoutes.js
-│   └── certificateRoutes.js
-├── utils/
-│   └── pdfGenerator.js
-├── .env
+│   ├── certificateRoutes.js
+│   └── resultRoutes.js
+│
+├── middleware/
+│   └── authMiddleware.js
+│
 ├── server.js
-└── README.md
-
-````
+├── .env
+└── package.json
+```
 
 ---
 
-## 🔑 Environment Variables (.env)
+## ⚙️ Installation & Setup
+
+### 1️⃣ Clone Repository
+
+```bash
+git clone https://github.com/yourusername/micro-certifications-backend.git
+cd micro-certifications-backend
+```
+
+### 2️⃣ Install Dependencies
+
+```bash
+npm install
+```
+
+### 3️⃣ Setup `.env` file
+
+Create a `.env` file in the root folder and add:
 
 ```env
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
 PORT=5000
-````
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/microcert
+JWT_SECRET=your_jwt_secret_key
+```
+
+### 4️⃣ Run Server
+
+```bash
+npm start
+```
+
+Server runs on `http://localhost:5000`
 
 ---
 
-## 📖 API Documentation
+## 📚 API Endpoints
 
-### ✅ **1. Register User**
+### 🔐 **Auth Routes** (`/auth`)
 
-**Endpoint:** `POST /api/auth/register`
-**Description:** Register a new user.
-**Request Body Example:**
+| Method | Endpoint    | Description                     |
+| ------ | ----------- | ------------------------------- |
+| POST   | `/register` | Register new user               |
+| POST   | `/login`    | Login user and return JWT token |
+
+**Register Request**
 
 ```json
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123"
+  "name": "Vinay",
+  "email": "vinay@example.com",
+  "password": "123456"
 }
 ```
 
-**Response Example:**
+**Register Response**
 
 ```json
 {
-  "message": "User registered successfully"
-}
-```
-
----
-
-### ✅ **2. Login User**
-
-**Endpoint:** `POST /api/auth/login`
-**Description:** Login an existing user and receive a JWT token.
-**Request Body Example:**
-
-```json
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-**Response Example:**
-
-```json
-{
+  "success": true,
   "user": {
-    "_id": "123456",
-    "name": "John Doe",
-    "email": "john@example.com"
-  },
-  "token": "jwt_token_here"
+    "_id": "6717a3f59efdb8c6c4a82a91",
+    "name": "Vinay",
+    "email": "vinay@example.com"
+  }
 }
 ```
 
 ---
 
-### ✅ **3. Get Quiz Questions (Public)**
+### 🧾 **Quiz Routes** (`/quiz`)
 
-**Endpoint:** `GET /api/quiz/:quizId`
-**Description:** Fetch questions for a quiz without authentication.
-**Example Request:**
-`GET /api/quiz/quiz1`
+| Method | Endpoint         | Description                         |
+| ------ | ---------------- | ----------------------------------- |
+| GET    | `/list`          | Get all quizzes (with filters)      |
+| GET    | `/info/:quizId`  | Get quiz info before starting       |
+| POST   | `/start/:quizId` | Start new exam session              |
+| GET    | `/:quizId`       | Fetch quiz questions (with session) |
+| POST   | `/submit`        | Submit quiz answers                 |
 
-**Response Example:**
+**Start Exam Request**
 
-```json
-[
-  {
-    "_id": "q1",
-    "quizId": "quiz1",
-    "questionText": "What is JavaScript?",
-    "options": ["Programming language", "Coffee", "Game", "Library"]
-  },
-  ...
-]
+```http
+POST /quiz/start/pythonEasy
+Authorization: Bearer <jwt-token>
 ```
 
----
-
-### ✅ **4. Submit Quiz (Protected)**
-
-**Endpoint:** `POST /api/quiz/submit`
-**Description:** Submit quiz answers (requires authentication).
-**Headers:**
-
-```
-Authorization: Bearer <your_jwt_token>
-```
-
-**Request Body Example:**
+**Response**
 
 ```json
 {
-  "quizId": "quiz1",
-  "answers": ["Programming language", "Option2", "Option3"]
+  "success": true,
+  "message": "Exam started successfully",
+  "examSessionId": "2d7b5ab3-3f7b-4f9d-92a8-77e89cd37e1c",
+  "expiresAt": "2025-10-23T14:30:00.000Z"
 }
 ```
 
-**Response Example:**
+---
+
+### 🧠 **Submit Quiz**
+
+```http
+POST /quiz/submit
+Authorization: Bearer <jwt-token>
+```
+
+**Body:**
+
+```json
+{
+  "quizId": "webDevQuiz",
+  "examSessionId": "2d7b5ab3-3f7b-4f9d-92a8-77e89cd37e1c",
+  "answers": ["<style>", "font-size", "console.log()"]
+}
+```
+
+**Response:**
 
 ```json
 {
   "success": true,
   "score": 3,
   "pass": true,
-  "resultId": "result_id_here"
+  "resultId": "6718f77c9fcb2f97d18b4a12",
+  "correctCount": 3,
+  "wrongCount": 0,
+  "totalQuestions": 3
 }
 ```
 
 ---
 
-### ✅ **5. Generate Certificate**
+### 🎓 **Certificate Routes** (`/certificate`)
 
-**Endpoint:** `POST /api/certificate`
-**Description:** Generate and download a PDF certificate.
-**Request Body Example:**
+| Method | Endpoint    | Description                |
+| ------ | ----------- | -------------------------- |
+| POST   | `/download` | Download certificate (PDF) |
+
+**Body:**
 
 ```json
-{
-  "name": "John Doe",
-  "quizTitle": "JavaScript Basics",
-  "score": 8
-}
+{ "resultId": "6718f77c9fcb2f97d18b4a12" }
 ```
 
 **Response:**
-A downloadable PDF file will be returned as an attachment.
+⬇️ Returns downloadable **PDF certificate** file.
 
 ---
 
-## 📜 Authentication Middleware
+### 📊 **Results Routes** (`/user`)
 
-All protected routes use `verifyToken`, which checks for a valid JWT in the request headers:
+| Method | Endpoint          | Description                                      |
+| ------ | ----------------- | ------------------------------------------------ |
+| GET    | `/passed-results` | Get all quiz results (with filters & pagination) |
 
-```javascript
-Authorization: Bearer <jwt_token>
-```
+**Filters Supported**
 
-If missing or invalid, the API responds with:
+| Query Param         | Description           |
+| ------------------- | --------------------- |
+| pass                | `true` / `false`      |
+| quizId              | Filter by quiz        |
+| level               | Filter by quiz level  |
+| startDate / endDate | Filter by date range  |
+| minScore / maxScore | Filter by score range |
+| page / limit        | Pagination            |
+
+**Response:**
 
 ```json
 {
-  "message": "Access Denied"
+  "success": true,
+  "stats": {
+    "totalAttempts": 10,
+    "passedCount": 7,
+    "failedCount": 3
+  },
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalResults": 7
+  },
+  "results": [
+    {
+      "quizId": "webDevQuiz",
+      "quizTitle": "Web Development Fundamentals",
+      "level": "Easy",
+      "score": 9,
+      "pass": true,
+      "date": "2025-10-22T07:18:00.000Z"
+    }
+  ]
 }
 ```
 
-or
+---
 
-```json
+## 🧱 MongoDB Models
+
+### 🧍‍♂️ `User`
+
+```js
 {
-  "message": "Invalid Token"
+  name: String,
+  email: String,
+  password: String
+}
+```
+
+### ❓ `QuestionSet`
+
+```js
+{
+  quizId: "webDevQuiz",
+  title: "Web Development Fundamentals",
+  level: "Easy",
+  timeLimit: 15,
+  passMarks: 5,
+  technologies: ["HTML", "CSS", "JavaScript"],
+  questions: [
+    { questionText, options, correctAnswer }
+  ]
+}
+```
+
+### 🧩 `ExamSession`
+
+```js
+{
+  userId,
+  quizId,
+  examSessionId,
+  startedAt,
+  expiresAt,
+  isSubmitted
+}
+```
+
+### 🏁 `Result`
+
+```js
+{
+  userId,
+  userName,
+  quizId,
+  quizTitle,
+  level,
+  score,
+  pass,
+  correctCount,
+  wrongCount,
+  totalQuestions,
+  technologies,
+  date
 }
 ```
 
 ---
 
-## 🛠 Running the Project Locally
+## 🧾 Example Certificate Output
 
-1. Clone the repository:
+* Certificate auto-generates as **PDF**
+* Includes:
 
-   ```bash
-   git clone https://github.com/vinnu382910/LMS-Micro-Certification-backend.git
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file with your environment variables.
-
-4. Run the server:
-
-   ```bash
-   npm start
-   ```
-
-The backend will start on the port defined in `.env` (default is `5000`).
+  * Candidate Name
+  * Quiz Title
+  * Technologies Covered
+  * Date of Issue
+  * Signature & Organization Logo
 
 ---
 
-## 📂 Postman Testing Collection
+## 🛠️ Developer Notes
 
-You can create requests in Postman for:
-
-* **Register** → `POST /api/auth/register`
-* **Login** → `POST /api/auth/login`
-* **Get Quiz Questions** → `GET /api/quiz/:quizId`
-* **Submit Quiz** → `POST /api/quiz/submit` (with Bearer token)
-* **Download Certificate** → `POST /api/certificate` (file download)
+* Update MongoDB Models → existing documents can be updated manually using MongoDB Compass → “Update Many” option
+* Use JWT middleware (`authMiddleware.js`) to protect sensitive routes
+* Use Postman to test endpoints easily
 
 ---
 
-## 📢 Notes
+## 👨‍💻 Author
 
-* Ensure MongoDB is running and properly connected.
-* JWT tokens are required for all protected routes.
-* Quiz questions are public, but submitting answers and downloading certificates are secured.
-* CORS issues can occur if the frontend and backend domains differ—configure CORS or proxy as needed.
-* Environment variables are essential for security and should not be exposed.
-
----
-
-## 💻 License
-
-This project is open-source and free to use.
+**Vinay Kalva**
+📧 [vinaykalva712@gmail.com](mailto:vinaykalva712@gmail.com)
+💼 MERN Stack Developer
+🌍 Hyderabad, India
 
 ---
-Happy learning and coding! 🚀📚
