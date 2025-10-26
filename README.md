@@ -1,180 +1,198 @@
 # 🧠 Micro-Certifications Backend
 
-A **Node.js + Express + MongoDB** backend that powers the **Micro-Certifications App** — a platform for users to take online quizzes, track results, and download digital certificates for passed tests.
+A complete **Node.js + Express + MongoDB** backend for the **Micro-Certifications App**, which allows users to:
+
+* Register and log in securely
+* Browse and start quizzes
+* Generate unique **examSessionId** when starting a quiz
+* Submit answers and get scores
+* Track results and download certificates
 
 ---
 
-## 🚀 Features
+## 🚀 Tech Stack
 
-✅ User authentication (Register/Login) with JWT
-✅ Secure token-based quiz participation
-✅ Dynamic quiz listing and filtering (by level, tech, search)
-✅ Exam session management with auto-expiry
-✅ Score calculation and detailed result saving
-✅ Certificate generation (PDF format) for passed quizzes
-✅ Result filtering and pagination
-
----
-
-## 🧩 Tech Stack
-
-| Layer                  | Technology                  |
-| ---------------------- | --------------------------- |
-| Backend Framework      | **Node.js**, **Express.js** |
-| Database               | **MongoDB + Mongoose**      |
-| Authentication         | **JWT (JSON Web Token)**    |
-| Password Security      | **bcrypt.js**               |
-| Certificate Generation | **PDFKit**                  |
-| Environment Management | **dotenv**                  |
+* **Node.js** – Server environment
+* **Express.js** – Web framework
+* **MongoDB + Mongoose** – Database & ODM
+* **JWT** – Authentication
+* **Bcrypt.js** – Password hashing
+* **PDFKit** – Certificate generation
+* **UUID** – For unique exam session IDs
+* **dotenv** – Environment configuration
 
 ---
 
-## 🏗️ Project Structure
+## ⚙️ Project Setup
 
-```
-micro-certifications-backend/
-│
-├── models/
-│   ├── User.js
-│   ├── Question.js
-│   ├── Result.js
-│   └── ExamSession.js
-│
-├── controllers/
-│   ├── authController.js
-│   ├── quizController.js
-│   ├── resultController.js
-│   └── certificateController.js
-│
-├── routes/
-│   ├── authRoutes.js
-│   ├── quizRoutes.js
-│   ├── certificateRoutes.js
-│   └── resultRoutes.js
-│
-├── middleware/
-│   └── authMiddleware.js
-│
-├── server.js
-├── .env
-└── package.json
-```
-
----
-
-## ⚙️ Installation & Setup
-
-### 1️⃣ Clone Repository
+### 1️⃣ Clone the repository
 
 ```bash
 git clone https://github.com/yourusername/micro-certifications-backend.git
 cd micro-certifications-backend
 ```
 
-### 2️⃣ Install Dependencies
+### 2️⃣ Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3️⃣ Setup `.env` file
+### 3️⃣ Create `.env` file
 
-Create a `.env` file in the root folder and add:
+Create a `.env` file in the root directory:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/microcert
-JWT_SECRET=your_jwt_secret_key
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_secret_key
 ```
 
-### 4️⃣ Run Server
+### 4️⃣ Start the server
 
 ```bash
 npm start
 ```
 
-Server runs on `http://localhost:5000`
+The backend will run at:
+
+```
+http://localhost:5000
+```
 
 ---
 
-## 📚 API Endpoints
+## 🧩 Folder Structure
 
-### 🔐 **Auth Routes** (`/auth`)
-
-| Method | Endpoint    | Description                     |
-| ------ | ----------- | ------------------------------- |
-| POST   | `/register` | Register new user               |
-| POST   | `/login`    | Login user and return JWT token |
-
-**Register Request**
-
-```json
-{
-  "name": "Vinay",
-  "email": "vinay@example.com",
-  "password": "123456"
-}
+```
+backend/
+│
+├── controllers/
+│   ├── authController.js
+│   ├── quizController.js
+│   ├── resultController.js
+│   ├── certificateController.js
+│
+├── models/
+│   ├── User.js
+│   ├── Question.js
+│   ├── Result.js
+│   ├── ExamSession.js
+│
+├── routes/
+│   ├── authRoutes.js
+│   ├── quizRoutes.js
+│   ├── resultRoutes.js
+│   ├── certificateRoutes.js
+│
+├── middleware/
+│   └── authMiddleware.js
+│
+├── server.js
+└── .env
 ```
 
-**Register Response**
+---
 
-```json
-{
-  "success": true,
-  "user": {
-    "_id": "6717a3f59efdb8c6c4a82a91",
-    "name": "Vinay",
-    "email": "vinay@example.com"
+## 🧠 Core Feature Highlight — Exam Session System
+
+When a user starts a quiz, the backend **creates a unique `examSessionId`** (using `uuidv4()`) that:
+
+* Is stored in the `ExamSession` collection
+* Prevents multiple submissions or re-entry after expiry
+* Is verified before fetching quiz questions or submitting answers
+
+🔹 Implemented in `quizController.js` → `exports.startExam`
+
+```js
+// POST /quiz/start/:quizId
+exports.startExam = async (req, res) => {
+  const { quizId } = req.params;
+  const userId = req.user.id;
+
+  const quiz = await QuestionSet.findOne({ quizId });
+  if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+  const existingSession = await ExamSession.findOne({ userId, quizId, isSubmitted: false });
+  if (existingSession) {
+    return res.status(200).json({
+      success: true,
+      message: "Existing active session found",
+      examSessionId: existingSession.examSessionId,
+    });
   }
-}
+
+  const examSessionId = uuidv4();
+  const expiresAt = new Date(Date.now() + quiz.timeLimit * 60 * 1000);
+
+  await ExamSession.create({ userId, quizId, examSessionId, expiresAt });
+
+  res.status(201).json({
+    success: true,
+    message: "Exam started successfully",
+    examSessionId,
+    expiresAt,
+  });
+};
 ```
 
 ---
 
-### 🧾 **Quiz Routes** (`/quiz`)
+## 📡 API Endpoints Overview
 
-| Method | Endpoint         | Description                         |
-| ------ | ---------------- | ----------------------------------- |
-| GET    | `/list`          | Get all quizzes (with filters)      |
-| GET    | `/info/:quizId`  | Get quiz info before starting       |
-| POST   | `/start/:quizId` | Start new exam session              |
-| GET    | `/:quizId`       | Fetch quiz questions (with session) |
-| POST   | `/submit`        | Submit quiz answers                 |
+### 🔐 Authentication
 
-**Start Exam Request**
+| Method | Endpoint         | Description                 | Protected |
+| ------ | ---------------- | --------------------------- | --------- |
+| POST   | `/auth/register` | Register a new user         | ❌         |
+| POST   | `/auth/login`    | Login and receive JWT token | ❌         |
+
+---
+
+### 🧭 Quiz APIs
+
+| Method | Endpoint              | Description                                      | Protected |
+| ------ | --------------------- | ------------------------------------------------ | --------- |
+| GET    | `/quiz/list`          | Fetch all available quizzes (with filters)       | ❌         |
+| GET    | `/quiz/info/:quizId`  | Fetch quiz details (without questions)           | ✅         |
+| POST   | `/quiz/start/:quizId` | Start a new exam session (creates examSessionId) | ✅         |
+| GET    | `/quiz/:quizId`       | Get quiz questions (requires valid session)      | ✅         |
+| POST   | `/quiz/submit`        | Submit quiz answers                              | ✅         |
+
+#### 🧾 Example — Start Exam
+
+**Request:**
 
 ```http
 POST /quiz/start/pythonEasy
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Response**
+**Response:**
 
 ```json
 {
   "success": true,
   "message": "Exam started successfully",
-  "examSessionId": "2d7b5ab3-3f7b-4f9d-92a8-77e89cd37e1c",
-  "expiresAt": "2025-10-23T14:30:00.000Z"
+  "examSessionId": "9c2210f0-4f85-4d0f-9e83-2ad90a2325f1",
+  "expiresAt": "2025-10-22T14:55:00.000Z"
 }
 ```
 
 ---
 
-### 🧠 **Submit Quiz**
+### 🏁 Submit Quiz
+
+**Request:**
 
 ```http
 POST /quiz/submit
-Authorization: Bearer <jwt-token>
-```
+Authorization: Bearer <JWT_TOKEN>
 
-**Body:**
-
-```json
 {
-  "quizId": "webDevQuiz",
-  "examSessionId": "2d7b5ab3-3f7b-4f9d-92a8-77e89cd37e1c",
-  "answers": ["<style>", "font-size", "console.log()"]
+  "quizId": "pythonEasy",
+  "examSessionId": "9c2210f0-4f85-4d0f-9e83-2ad90a2325f1",
+  "answers": ["A", "C", "B", "D", "A"]
 }
 ```
 
@@ -183,84 +201,54 @@ Authorization: Bearer <jwt-token>
 ```json
 {
   "success": true,
-  "score": 3,
+  "score": 4,
   "pass": true,
-  "resultId": "6718f77c9fcb2f97d18b4a12",
-  "correctCount": 3,
-  "wrongCount": 0,
-  "totalQuestions": 3
+  "resultId": "6717f9c223b52f63dce3d2f1",
+  "totalQuestions": 5,
+  "correctCount": 4,
+  "wrongCount": 1,
+  "technologies": ["Python", "Basics"]
 }
 ```
 
 ---
 
-### 🎓 **Certificate Routes** (`/certificate`)
+### 📜 Certificates
 
-| Method | Endpoint    | Description                |
-| ------ | ----------- | -------------------------- |
-| POST   | `/download` | Download certificate (PDF) |
+| Method | Endpoint                | Description                                             | Protected |
+| ------ | ----------------------- | ------------------------------------------------------- | --------- |
+| POST   | `/certificate/download` | Generate and download PDF certificate for passed result | ✅         |
 
-**Body:**
+**Request:**
 
-```json
-{ "resultId": "6718f77c9fcb2f97d18b4a12" }
-```
+```http
+POST /certificate/download
+Authorization: Bearer <JWT_TOKEN>
 
-**Response:**
-⬇️ Returns downloadable **PDF certificate** file.
-
----
-
-### 📊 **Results Routes** (`/user`)
-
-| Method | Endpoint          | Description                                      |
-| ------ | ----------------- | ------------------------------------------------ |
-| GET    | `/passed-results` | Get all quiz results (with filters & pagination) |
-
-**Filters Supported**
-
-| Query Param         | Description           |
-| ------------------- | --------------------- |
-| pass                | `true` / `false`      |
-| quizId              | Filter by quiz        |
-| level               | Filter by quiz level  |
-| startDate / endDate | Filter by date range  |
-| minScore / maxScore | Filter by score range |
-| page / limit        | Pagination            |
-
-**Response:**
-
-```json
 {
-  "success": true,
-  "stats": {
-    "totalAttempts": 10,
-    "passedCount": 7,
-    "failedCount": 3
-  },
-  "pagination": {
-    "currentPage": 1,
-    "totalPages": 1,
-    "totalResults": 7
-  },
-  "results": [
-    {
-      "quizId": "webDevQuiz",
-      "quizTitle": "Web Development Fundamentals",
-      "level": "Easy",
-      "score": 9,
-      "pass": true,
-      "date": "2025-10-22T07:18:00.000Z"
-    }
-  ]
+  "resultId": "6717f9c223b52f63dce3d2f1"
 }
 ```
 
 ---
 
-## 🧱 MongoDB Models
+### 📊 Results
 
-### 🧍‍♂️ `User`
+| Method | Endpoint               | Description                                       | Protected |
+| ------ | ---------------------- | ------------------------------------------------- | --------- |
+| GET    | `/user/passed-results` | Fetch user quiz history with filters & pagination | ✅         |
+
+**Query Params Supported:**
+
+```
+pass=true&level=Easy&minScore=3&maxScore=10&page=1&limit=10
+```
+
+---
+
+## 🗂️ Mongoose Models Overview
+
+### 🧍 User
 
 ```js
 {
@@ -270,82 +258,97 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-### ❓ `QuestionSet`
+### 🧾 QuestionSet
 
 ```js
 {
-  quizId: "webDevQuiz",
-  title: "Web Development Fundamentals",
-  level: "Easy",
-  timeLimit: 15,
-  passMarks: 5,
-  technologies: ["HTML", "CSS", "JavaScript"],
+  quizId: String,
+  title: String,
+  description: String,
+  level: String,
+  timeLimit: Number,
+  passMarks: Number,
+  totalQuestions: Number,
+  technologies: [String],
   questions: [
     { questionText, options, correctAnswer }
   ]
 }
 ```
 
-### 🧩 `ExamSession`
+### 🧩 ExamSession
 
 ```js
 {
-  userId,
-  quizId,
-  examSessionId,
-  startedAt,
-  expiresAt,
-  isSubmitted
+  userId: ObjectId,
+  quizId: String,
+  examSessionId: String,
+  startedAt: Date,
+  expiresAt: Date,
+  isSubmitted: Boolean
 }
 ```
 
-### 🏁 `Result`
+### 📈 Result
 
 ```js
 {
-  userId,
-  userName,
-  quizId,
-  quizTitle,
-  level,
-  score,
-  pass,
-  correctCount,
-  wrongCount,
-  totalQuestions,
-  technologies,
-  date
+  userId: ObjectId,
+  userName: String,
+  quizId: String,
+  quizTitle: String,
+  level: String,
+  score: Number,
+  pass: Boolean,
+  technologies: [String],
+  correctCount: Number,
+  wrongCount: Number,
+  totalQuestions: Number,
+  date: Date
 }
 ```
 
 ---
 
-## 🧾 Example Certificate Output
+## 🧰 Utility
 
-* Certificate auto-generates as **PDF**
-* Includes:
-
-  * Candidate Name
-  * Quiz Title
-  * Technologies Covered
-  * Date of Issue
-  * Signature & Organization Logo
+* **JWT Auth Middleware:**
+  Protects routes with `verifyToken()`
+* **Password Encryption:**
+  `bcrypt.hash()` and `bcrypt.compare()` used
+* **Certificate Generation:**
+  Uses `pdfkit` with logos and dynamic user data
 
 ---
 
-## 🛠️ Developer Notes
+## 🧹 To Update Model Fields in MongoDB
 
-* Update MongoDB Models → existing documents can be updated manually using MongoDB Compass → “Update Many” option
-* Use JWT middleware (`authMiddleware.js`) to protect sensitive routes
-* Use Postman to test endpoints easily
+If you added new fields to your Mongoose models:
+
+```bash
+npm run shell
+```
+
+Then inside the Mongo shell:
+
+```js
+db.questionsets.updateMany({}, { $set: { technologies: ["General"] } })
+db.results.updateMany({}, { $set: { wrongCount: 0, correctCount: 0 } })
+```
+
+Restart your server after schema update:
+
+```bash
+npm restart
+```
 
 ---
 
-## 👨‍💻 Author
+## 🏁 Author
 
-**Vinay Kalva**
+👤 **Vinay Kalva**
+Full Stack Developer | Cybersecurity Enthusiast
 📧 [vinaykalva712@gmail.com](mailto:vinaykalva712@gmail.com)
-💼 MERN Stack Developer
-🌍 Hyderabad, India
+🌐 GitHub: [vinaykalva712](https://github.com/vinaykalva712)
 
 ---
