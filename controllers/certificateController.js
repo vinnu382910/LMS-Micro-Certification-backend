@@ -48,7 +48,7 @@ exports.generateCertificateByResultId = async (req, res) => {
 
     // 🏢 Center Logo + Company Name
     const logoPath = path.join(__dirname, "./assets/talentquiz_logo.png");
-    const companyName = "TalentQuiz Labs";
+    const companyName = "SBTQuiz Labs";
     const logoWidth = 70;
     const fontSize = 42;
 
@@ -166,7 +166,7 @@ exports.generateCertificateByResultId = async (req, res) => {
 
     const bottomY = pageHeight - 60;
     const ceoName = "K. Vinay";
-    const ceoTitle = "CEO, TalentQuiz Labs";
+    const ceoTitle = "CEO, SBTQuiz Labs";
 
     // Left: Issue Date
     doc.font("Helvetica-Bold")
@@ -197,3 +197,4 @@ exports.generateCertificateByResultId = async (req, res) => {
     res.status(500).json({ message: "Server error generating certificate." });
   }
 };
+
